@@ -1,0 +1,52 @@
+service: interactive-post-demo
+
+provider:
+  name: aws
+  region: us-east-1
+  runtime: python2.7
+  memorySize: 128
+  variableSyntax: "\\${(?!AWS::)([ :a-zA-Z0-9._,\\-\\/\\(\\)]+?)}"
+  environment:
+    VOTES_TABLE:
+      Ref: VotesTable
+  iamRoleStatements:
+    - Effect: Allow
+      Action: dynamodb:*
+      Resource:
+        - Fn::GetAtt: ['VotesTable', 'Arn']
+
+plugins:
+  - serverless-python-requirements
+
+functions:
+  slashCommand:
+    handler: polling.slash_command
+    events:
+      - http: POST slash-command
+  endPollAction:
+    handler: polling.end_poll_action
+    events:
+      - http: POST end-poll
+  voteAction:
+    handler: polling.vote_action
+    events:
+      - http: POST vote
+
+resources:
+  Resources:
+    VotesTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        AttributeDefinitions:
+          - AttributeName: PollId
+            AttributeType: S
+          - AttributeName: UserId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: PollId
+            KeyType: HASH
+          - AttributeName: UserId
+            KeyType: RANGE
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
